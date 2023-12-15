@@ -1,12 +1,19 @@
 import cv2
 import numpy as np
 
-def process_frame(frame, mask):
-    # Aplica a máscara de segmentação na imagem
-    segmented_frame = cv2.bitwise_and(frame, frame, mask=mask)
 
-    # Converte a imagem segmentada para escala de cinza
-    image_gray = cv2.cvtColor(segmented_frame, cv2.COLOR_BGR2GRAY)
+def process_frame(frame):
+    # Converter para HSV
+    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # Isolar a faixa de cor do cartão verde
+    lower_green = np.array([40, 40, 40])
+    upper_green = np.array([80, 255, 255])
+    green_mask = cv2.inRange(hsv_frame, lower_green, upper_green)
+    green_frame = cv2.bitwise_and(hsv_frame, hsv_frame, mask=green_mask)
+
+    # Converte a imagem filtrada para escala de cinza
+    image_gray = cv2.cvtColor(green_frame, cv2.COLOR_BGR2GRAY)
     image_gray = image_gray / 255.0
 
     # Kernels de Prewitt
@@ -21,7 +28,7 @@ def process_frame(frame, mask):
     gradient_Prewitt = np.sqrt(dx_Prewitt ** 2 + dy_Prewitt ** 2)
 
     # Define um limiar para identificar pontos de interesse
-    threshold = 1 # Este valor pode precisar ser ajustado
+    threshold = 1.1
 
     # Identifica pontos de interesse
     points_of_interest = np.where(gradient_Prewitt > threshold)
@@ -34,11 +41,12 @@ def process_frame(frame, mask):
         cv2.drawMarker(frame_with_points, (x, y), (0, 0, 255), markerType=cv2.MARKER_TILTED_CROSS)
 
     # Mostra a imagem com pontos de interesse
-    cv2.imshow('Pontos de Interesse FD', frame_with_points)
+    cv2.imshow('Pontos de Interesse Find Objects', frame_with_points)
 
     return gradient_Prewitt
 
-def calculate_card_center(image):
+
+def find_card_center(image):
     # Aplica limiar para identificar contornos
     ret, thresh = cv2.threshold(image, 0.5, 1.0, cv2.THRESH_BINARY)
 

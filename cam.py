@@ -1,11 +1,14 @@
 import cv2
 import segmentation
 import findobjects
-
+import tracking
 
 camera_index = 0
-
 cap = cv2.VideoCapture(camera_index)
+tracker = tracking.CSRTTracker()
+frame_count = 0
+redetection_interval = 30
+tracker_initialized = False
 
 
 def get_cap():
@@ -13,59 +16,33 @@ def get_cap():
 
 
 def start_camloop():
-    # Inicializa a camera uma primeira vez
-    if not cap.isOpened():
-        cap.open(0)
-        _, frame = cap.read()
-        cv2.imshow("Frame", frame)
+    global tracker_initialized, frame_count
 
-    # Verifica se a camera foi inicializada com sucesso
+    # Verifica se a câmera foi inicializada com sucesso
     if not cap.isOpened():
-        cap.open(0)
-    else:
-        # Capture um quadro da câmera
+        cap.open(camera_index)
+
+    while True:
+
         ret, frame = cap.read()
-        # Verifica se a captura foi bem-sucedida
         if not ret:
             print("Erro ao capturar o quadro.")
+            break
 
-        else:
-            # Exibe o quadro em uma janela
-            frame = frame[:, ::-1, :]
+        # Frame de cada metodo para evitar conflitos
+        frame_segmentation = frame
+        frame_findobjects = frame
+        frame_tracking = frame
 
-            cv2.imshow('Frame', frame)
-            window_size = cv2.getWindowImageRect('Frame')
-            print(window_size[2], window_size[3])
+        #Variaveis
+        image_hsv = cv2.cvtColor(frame_segmentation, cv2.COLOR_BGR2HSV)
+        mask = segmentation.update_segmentation(image_hsv)
+        frame_cvmat = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        #Centers
+        center_seg = segmentation.segmentate_card_center(mask)
 
-            image_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # Segmentação de imagens
+        # Desenhe um círculo vermelho no centro
+        cv2.circle(frame_cvmat, center_seg, 5, (0, 0, 255), -1)
 
-
-            # METODOS APLICADOS
-            # Variaveis dos metodos
-            mask = segmentation.update_segmentation(image_hsv)
-            gradient = findobjects.process_frame(frame, mask)
-
-            # Calcule o centro do cartão verde na detecção de objetos
-            center_fb = findobjects.calculate_card_center(gradient)
-            if center_fb is not None:
-                center_x = center_fb[0]
-
-                # Converta o quadro para o tipo cv::Mat
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                # Desenhe um círculo vermelho no centro
-                cv2.circle(frame, center_fb, 5, (0, 0, 255), -1)
-                cv2.imshow("Result FB", frame)
-                return center_x
-
-
-            # Calcule o centro do cartão verde na imagem segmentada
-            center = segmentation.find_card_center(mask)
-            if center is not None:
-                center_x = center[0]  # Valor x do centro
-
-                # Converta o quadro para o tipo cv::Mat
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                # Desenhe um círculo vermelho no centro
-                cv2.circle(frame, center, 5, (0, 0, 255), -1)
-                cv2.imshow("Result SEG", frame)
-                return center_x
+        cv2.imshow("Result Segmentation", frame_segmentation)

@@ -40,7 +40,7 @@ def update_segmentation(image_hsv):
     # cv2.imshow("Mask V", mask_v * 255)
 
     mask = mask_h * mask_s * mask_v * 255
-    cv2.imshow("Mask SEG", mask)
+    cv2.imshow("Mask Segmentation", mask)
     return mask
 
 
@@ -86,7 +86,7 @@ def create_trackbar():
     cv2.createTrackbar("Vmax", "Frame", vmax, 255, on_change_vmax)
 
 
-def find_card_center(image):
+def segmentate_card_center(image):
     # Encontre os contornos na imagem segmentada
     contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
