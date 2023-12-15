@@ -1,7 +1,7 @@
 import cv2
 
 
-def update_segmentation(image_hsv):
+def update_segmentation(image_hsv, showSegmentation):
     if hmin < hmax:
         ret, mask_hmin = cv2.threshold(src=image_hsv[:, :, 0], thresh=hmin, maxval=1, type=cv2.THRESH_BINARY)
 
@@ -40,7 +40,12 @@ def update_segmentation(image_hsv):
     # cv2.imshow("Mask V", mask_v * 255)
 
     mask = mask_h * mask_s * mask_v * 255
-    cv2.imshow("Mask Segmentation", mask)
+
+    if showSegmentation:
+        cv2.imshow("Mask Segmentation", mask)
+    elif cv2.getWindowProperty("Mask Segmentation", cv2.WND_PROP_VISIBLE) >= 1:
+        cv2.destroyWindow("Mask Segmentation")
+
     return mask
 
 

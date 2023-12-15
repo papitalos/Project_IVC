@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def process_frame(frame):
+def process_frame(frame, showFindObjects):
     # Converter para HSV
     hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -40,8 +40,11 @@ def process_frame(frame):
         # Desenha um 'X' vermelho
         cv2.drawMarker(frame_with_points, (x, y), (0, 0, 255), markerType=cv2.MARKER_TILTED_CROSS)
 
-    # Mostra a imagem com pontos de interesse
-    cv2.imshow('Pontos de Interesse Find Objects', frame_with_points)
+    if showFindObjects:
+        cv2.imshow('Pontos de Interesse Find Objects', frame_with_points)
+    elif cv2.getWindowProperty('Pontos de Interesse Find Objects', cv2.WND_PROP_VISIBLE) >= 1:
+        cv2.destroyWindow('Pontos de Interesse Find Objects')
+
 
     return gradient_Prewitt
 

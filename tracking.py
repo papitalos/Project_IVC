@@ -2,61 +2,71 @@ import cv2
 import numpy as np
 
 
-class CSRTTracker:
-    def __init__(self):
-        self.tracker = cv2.TrackerCSRT_create()
-        self.initialized = False
-        self.msg_control = 0
+def initialize_tracker(tracker, frame, bbox):
+    tracker.init(frame, bbox)
+    return tracker
 
-    def initialize(self, frame, bbox):
-        self.tracker.init(frame, bbox)
-        self.initialized = True
 
-    def update(self, frame):
-        if not self.initialized:
-            return None
+def update_tracker(tracker, frame):
+    if tracker is None:
+        return None, None
 
-        success, bbox = self.tracker.update(frame)
-        if success:
-            return bbox
+    success, bbox = tracker.update(frame)
+    return success, bbox
+
+
+def detect_and_initialize(frame):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    lower_green = np.array([40, 40, 40])
+    upper_green = np.array([80, 255, 255])
+    green_mask = cv2.inRange(hsv, lower_green, upper_green)
+
+    contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest_contour)
+        min_area = 200
+        max_area = 200000
+        if min_area < w * h < max_area:
+            return x, y, w, h
         else:
             return None
+    else:
+        return None
 
-    def detect_and_initialize(self, frame):
 
-        # Converter para HSV
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+def execute_tracking(frame, showTracking):
+    tracker = cv2.TrackerCSRT_create()
+    bbox = detect_and_initialize(frame)
+    frame_copy = frame.copy()
 
-        # Definir intervalos para a cor verde fluorescente
-        lower_green = np.array([40, 40, 40])
-        upper_green = np.array([80, 255, 255])
+    if bbox:
+        tracker = initialize_tracker(tracker, frame, bbox)
+    else:
+        print("Não foi possível detectar uma ROI válida.")
+        return frame, None
 
-        # Criar uma máscara para a cor verde
-        green_mask = cv2.inRange(hsv, lower_green, upper_green)
+    success, bbox = update_tracker(tracker, frame)
+    if success:
+        p1 = (int(bbox[0]), int(bbox[1]))
+        p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+        cv2.rectangle(frame_copy, p1, p2, (255, 0, 0), 2, 1)
 
-        # Encontrar contornos
-        contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if showTracking:
+            cv2.imshow("Tracking Line", frame_copy)
+        elif cv2.getWindowProperty("Tracking Line", cv2.WND_PROP_VISIBLE) >= 1:
+            cv2.destroyWindow("Tracking Line")
 
-        if contours:
-            largest_contour = max(contours, key=cv2.contourArea)
-            x, y, w, h = cv2.boundingRect(largest_contour)
+        return frame_copy, bbox
+    else:
+        return frame, None
 
-            # Defina os limites mínimos e máximos para a área do cartão
-            min_area = 200
-            max_area = 200000
 
-            # Verifique se o contorno está dentro dos limites
-            if min_area < w * h < max_area:
-                self.msg_control = 0
-                print(f"Inicializando tracker com ROI: {x}, {y}, {w}, {h}")
-                self.initialize(frame, (x, y, w, h))
-            else:
-                if self.msg_control == 0:
-                    self.msg_control = 1
-                    print("Contorno encontrado não corresponde ao tamanho esperado do cartão.")
-                return
-        else:
-            if self.msg_control == 0:
-                self.msg_control = 1
-                print("Nenhum contorno verde detectado.")
-            return
+def calculate_center(bbox):
+    if bbox is None:
+        return None
+
+    x, y, w, h = bbox
+    centro_x = int(x + w / 2)
+    centro_y = int(y + h / 2)
+    return centro_x, centro_y
